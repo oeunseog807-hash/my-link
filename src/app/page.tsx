@@ -9,6 +9,13 @@ const profile = {
   initial: "은",
 };
 
+function displayUrl(url: string) {
+  return url
+    .replace(/^mailto:/, "")
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "");
+}
+
 export default function Home() {
   return (
     <div className="relative flex min-h-screen justify-center overflow-hidden bg-background px-4 py-16">
@@ -45,7 +52,7 @@ export default function Home() {
               </span>
               <span className="flex flex-1 flex-col items-start">
                 <span className="font-semibold">{link.title}</span>
-                <span className="text-xs text-muted-foreground">{link.url}</span>
+                <span className="text-xs text-muted-foreground">{displayUrl(link.url)}</span>
               </span>
               <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-violet-500" />
             </Button>
