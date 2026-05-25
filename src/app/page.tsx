@@ -2,19 +2,13 @@ import { ArrowUpRight } from "lucide-react";
 
 import { links } from "@/data/links";
 import { Button } from "@/components/ui/button";
+import { displayUrl } from "@/lib/utils";
 
 const profile = {
   name: "은석",
   bio: "안녕하세요! 제 링크들을 모아둔 마이링크 페이지입니다.",
   initial: "은",
 };
-
-function displayUrl(url: string) {
-  return url
-    .replace(/^mailto:/, "")
-    .replace(/^https?:\/\//, "")
-    .replace(/\/$/, "");
-}
 
 export default function Home() {
   return (
