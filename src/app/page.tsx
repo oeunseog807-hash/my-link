@@ -12,23 +12,23 @@ const links = [
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center bg-gradient-to-b from-sky-400 to-indigo-500 px-4 py-16">
-      <main className="flex w-full max-w-md flex-col items-center gap-6">
-        <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white text-4xl font-bold text-indigo-500 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-[#E0E7FF] p-4">
+      <main className="flex w-full flex-col items-center gap-6 rounded-xl border-[3px] border-black bg-[#FEF08A] p-4 shadow-[6px_6px_0_0_#000] md:w-4/5 md:max-w-[480px] md:p-8 lg:w-[400px]">
+        <div className="flex h-[120px] w-[120px] items-center justify-center rounded-full border-[3px] border-black bg-white text-4xl font-extrabold text-black">
           {profile.initial}
         </div>
 
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white">{profile.name}</h1>
-          <p className="mt-2 text-sm text-white/80">{profile.bio}</p>
+          <h1 className="text-2xl font-extrabold text-black">{profile.name}</h1>
+          <p className="mt-2 text-sm font-medium text-black/70">{profile.bio}</p>
         </div>
 
-        <div className="mt-4 flex w-full flex-col gap-4">
+        <div className="flex w-full flex-col gap-4">
           {links.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="w-full rounded-xl bg-white py-4 text-center font-semibold text-gray-800 shadow-md transition hover:scale-105 hover:bg-gray-100"
+              className="w-full rounded-lg border-[3px] border-black bg-white py-3 text-center font-bold text-black shadow-[4px_4px_0_0_#000] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
             >
               {link.label}
             </a>
