@@ -1,10 +1,13 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 
 import { db } from "./firebase";
@@ -35,4 +38,18 @@ export async function addLink(data: {
   icon: string;
 }) {
   await addDoc(linksCol, { ...data, createdAt: serverTimestamp() });
+}
+
+export async function updateLink(
+  id: string,
+  data: { title: string; url: string },
+) {
+  await updateDoc(doc(db, "users", "anonymous", "links", id), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteLink(id: string) {
+  await deleteDoc(doc(db, "users", "anonymous", "links", id));
 }
