@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, type FormEvent } from "react";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 import { displayUrl } from "@/lib/utils";
 import { useAuth, signInWithGoogle, logout } from "@/lib/auth";
@@ -130,6 +132,9 @@ function LinkRow({
           {displayUrl(link.url)}
         </span>
       </a>
+      <span className="shrink-0 text-xs text-muted-foreground" title="클릭수">
+        👆 {link.clickCount}
+      </span>
       <Button variant="ghost" size="icon" aria-label="수정" onClick={startEdit}>
         ✏️
       </Button>
@@ -142,31 +147,43 @@ function LinkRow({
 
 function ProfileEditor({ user }: { user: User }) {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    ensureProfile(user).then((p) => {
-      setProfile(p);
-      setUsername(p.username);
-      setDisplayName(p.displayName);
-      setBio(p.bio);
-    });
+    ensureProfile(user).then(setProfile);
   }, [user]);
+
+  function startEdit() {
+    if (!profile) return;
+    setUsername(profile.username);
+    setDisplayName(profile.displayName);
+    setBio(profile.bio);
+    setError("");
+    setEditing(true);
+  }
 
   async function save() {
     if (!displayName.trim()) return setError("이름을 입력해주세요");
     try {
       setSaving(true);
       setError("");
-      setMessage("");
-      const saved = await updateProfile(user.uid, { username, displayName, bio });
-      setUsername(saved);
-      setMessage("저장되었어요");
+      const savedUsername = await updateProfile(user.uid, {
+        username,
+        displayName,
+        bio,
+      });
+      setProfile({
+        username: savedUsername,
+        displayName: displayName.trim(),
+        bio: bio.trim(),
+        photoURL: profile?.photoURL ?? "",
+      });
+      setEditing(false);
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
       if (code === "USERNAME_TAKEN") setError("이미 사용 중인 주소예요");
@@ -184,9 +201,35 @@ function ProfileEditor({ user }: { user: User }) {
     );
   }
 
+  // 읽기 모드 — 수정 버튼을 눌러야 편집 화면으로
+  if (!editing) {
+    return (
+      <div className="flex items-start justify-between gap-3 rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-1">
+          <p className="text-base font-bold">{profile.displayName}</p>
+          <a
+            href={`/${profile.username}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-medium text-violet-600 hover:underline"
+          >
+            /{profile.username}
+          </a>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {profile.bio || "소개글이 없어요"}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={startEdit}>
+          수정
+        </Button>
+      </div>
+    );
+  }
+
+  // 편집 모드 — 라이브 입력창 + 저장/취소
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
-      <p className="text-sm font-semibold">프로필</p>
+    <div className="flex flex-col gap-3 rounded-2xl border-[1.5px] border-violet-300 bg-card p-5 shadow-sm">
+      <p className="text-sm font-semibold">프로필 수정</p>
       <div className="flex flex-col gap-1">
         <label className="text-xs text-muted-foreground">표시 이름</label>
         <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
@@ -194,23 +237,60 @@ function ProfileEditor({ user }: { user: User }) {
       <div className="flex flex-col gap-1">
         <label className="text-xs text-muted-foreground">공개 주소 (username)</label>
         <Input value={username} onChange={(e) => setUsername(e.target.value)} />
-        <p className="text-xs text-muted-foreground">
-          공개 URL: /{username || "..."}
-        </p>
+        <p className="text-xs text-muted-foreground">공개 URL: /{username || "..."}</p>
       </div>
       <div className="flex flex-col gap-1">
         <label className="text-xs text-muted-foreground">소개글</label>
         <Input value={bio} maxLength={150} onChange={(e) => setBio(e.target.value)} />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      <Button
-        onClick={save}
-        disabled={saving}
-        className="bg-violet-600 text-white hover:bg-violet-700"
-      >
-        {saving ? "저장 중..." : "프로필 저장"}
-      </Button>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setEditing(false)} disabled={saving}>
+          취소
+        </Button>
+        <Button
+          onClick={save}
+          disabled={saving}
+          className="bg-violet-600 text-white hover:bg-violet-700"
+        >
+          {saving ? "저장 중..." : "저장"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Stats({ items }: { items: LinkDoc[] }) {
+  const total = items.reduce((sum, l) => sum + (l.clickCount ?? 0), 0);
+  const sorted = [...items].sort((a, b) => b.clickCount - a.clickCount);
+  const max = Math.max(1, ...items.map((l) => l.clickCount));
+
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+      <p className="text-sm font-semibold">통계</p>
+      <div>
+        <p className="text-3xl font-bold text-violet-600">{total}</p>
+        <p className="text-xs text-muted-foreground">총 클릭수</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        {sorted.map((link) => (
+          <div key={link.id} className="flex flex-col gap-1">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2">
+                <span>{link.icon}</span>
+                <span className="font-medium">{link.title}</span>
+              </span>
+              <span className="text-muted-foreground">{link.clickCount} 클릭</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-violet-500 transition-all"
+                style={{ width: `${(link.clickCount / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -226,6 +306,7 @@ export default function MyPage() {
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<LinkDoc | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [username, setUsername] = useState("");
 
   async function reload(uid: string) {
     setItems(await fetchLinks(uid));
@@ -234,6 +315,7 @@ export default function MyPage() {
   useEffect(() => {
     if (!user) {
       setItems([]);
+      setUsername("");
       return;
     }
     setLoading(true);
@@ -241,6 +323,7 @@ export default function MyPage() {
       .then(setItems)
       .catch(() => setError("링크를 불러오지 못했어요"))
       .finally(() => setLoading(false));
+    ensureProfile(user).then((p) => setUsername(p.username));
   }, [user]);
 
   async function handleAdd(e: FormEvent) {
@@ -287,9 +370,17 @@ export default function MyPage() {
           {!authLoading &&
             (user ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {user.displayName ?? "사용자"}님
-                </span>
+                {username && (
+                  <Link
+                    href={`/${username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-sm font-medium hover:bg-muted"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    공개 페이지
+                  </Link>
+                )}
                 <Button variant="outline" size="sm" onClick={() => logout()}>
                   로그아웃
                 </Button>
@@ -366,6 +457,8 @@ export default function MyPage() {
                 ))
               )}
             </div>
+
+            {!loading && items.length > 0 && <Stats items={items} />}
           </>
         )}
       </main>

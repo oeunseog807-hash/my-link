@@ -6,14 +6,17 @@ import Link from "next/link";
 
 import { findByUsername, type Profile } from "@/lib/profile-db";
 import { fetchLinks, type LinkDoc } from "@/lib/links-db";
+import { useAuth } from "@/lib/auth";
 import { ProfileView } from "@/components/profile-view";
 
 export default function UserPage() {
   const params = useParams<{ username: string }>();
   const username = decodeURIComponent(params.username);
+  const { user } = useAuth();
 
   const [status, setStatus] = useState<"loading" | "found" | "notfound">("loading");
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [ownerUid, setOwnerUid] = useState("");
   const [links, setLinks] = useState<LinkDoc[]>([]);
 
   useEffect(() => {
@@ -28,6 +31,7 @@ export default function UserPage() {
       const lks = await fetchLinks(found.uid);
       if (!active) return;
       setProfile(found.profile);
+      setOwnerUid(found.uid);
       setLinks(lks);
       setStatus("found");
     })().catch(() => active && setStatus("notfound"));
@@ -65,6 +69,8 @@ export default function UserPage() {
       bio={profile.bio}
       initial={(profile.displayName || profile.username).charAt(0)}
       links={links}
+      ownerUid={ownerUid}
+      isOwner={!!user && user.uid === ownerUid}
     />
   );
 }
