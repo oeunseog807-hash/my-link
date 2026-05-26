@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 마이링크 (MyLink)
 
-## Getting Started
+여러 링크를 한 페이지에 모아 **URL 하나로 공유**하는 링크-인-바이오 서비스입니다.
 
-First, run the development server:
+🚀 **Live Demo**: https://my-link-kappa-ivory.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 주요 기능
+
+- 🔐 **Google 소셜 로그인** (Firebase Authentication)
+- 👤 **프로필 설정** — 표시 이름, 공개 주소(username), 소개글
+- 🔗 **링크 CRUD** — 추가 / 인라인 수정 / 삭제 (Firestore 영구 저장)
+- 🌐 **개인 공개 페이지** — `/{username}` 로 누구나 접속
+- 📊 **클릭 통계** — 링크별 클릭 수 집계 (동시 클릭에도 안전한 서버 increment)
+- 🖼️ **동적 OG 이미지** — SNS 공유 시 미리보기 자동 생성 (@vercel/og)
+- 📱 **반응형 디자인** — 모바일 / 데스크톱
+- 🛡️ **보안 규칙** — 읽기는 누구나, 쓰기는 본인만 (Firestore Security Rules)
+
+## 기술 스택
+
+| 영역 | 기술 |
+|------|------|
+| 프레임워크 | Next.js (App Router) + TypeScript |
+| 스타일링 | Tailwind CSS + shadcn/ui |
+| 인증 | Firebase Authentication (Google) |
+| 데이터베이스 | Firebase Firestore |
+| 배포 | Vercel |
+
+## 페이지 구조
+
+| 경로 | 설명 | 접근 |
+|------|------|------|
+| `/` | 랜딩 페이지 | 누구나 |
+| `/mypage` | 링크·프로필 관리 + 통계 | 로그인 |
+| `/{username}` | 공개 프로필 페이지 | 누구나 |
+
+## 데이터 구조 (Firestore)
+
+```
+users/{uid}                 // 프로필: username, displayName, bio, photoURL
+  └ links/{linkId}          // 링크: title, url, icon, clickCount
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 로컬 실행
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev          # http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`.env.local`에 Firebase 설정이 필요합니다:
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+```
