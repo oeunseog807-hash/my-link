@@ -307,6 +307,18 @@ export default function MyPage() {
   const [deleteTarget, setDeleteTarget] = useState<LinkDoc | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [username, setUsername] = useState("");
+  const [loginError, setLoginError] = useState("");
+
+  async function handleLogin() {
+    try {
+      setLoginError("");
+      await signInWithGoogle();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("로그인 실패:", e);
+      setLoginError(msg);
+    }
+  }
 
   async function reload(uid: string) {
     setItems(await fetchLinks(uid));
@@ -388,7 +400,7 @@ export default function MyPage() {
             ) : (
               <Button
                 size="sm"
-                onClick={() => signInWithGoogle().catch(() => {})}
+                onClick={handleLogin}
                 className="bg-violet-600 text-white hover:bg-violet-700"
               >
                 Google로 로그인
@@ -404,11 +416,16 @@ export default function MyPage() {
               로그인하면 나만의 링크를 추가하고 관리할 수 있어요.
             </p>
             <Button
-              onClick={() => signInWithGoogle().catch(() => {})}
+              onClick={handleLogin}
               className="bg-violet-600 text-white hover:bg-violet-700"
             >
               Google로 로그인
             </Button>
+            {loginError && (
+              <p className="max-w-full break-words text-xs text-destructive">
+                {loginError}
+              </p>
+            )}
           </div>
         ) : (
           <>
