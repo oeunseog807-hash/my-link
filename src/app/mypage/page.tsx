@@ -11,6 +11,12 @@ import {
   deleteLink,
   type LinkDoc,
 } from "@/lib/links-db";
+import {
+  ensureProfile,
+  updateProfile,
+  type Profile,
+} from "@/lib/profile-db";
+import type { User } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -134,6 +140,81 @@ function LinkRow({
   );
 }
 
+function ProfileEditor({ user }: { user: User }) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    ensureProfile(user).then((p) => {
+      setProfile(p);
+      setUsername(p.username);
+      setDisplayName(p.displayName);
+      setBio(p.bio);
+    });
+  }, [user]);
+
+  async function save() {
+    if (!displayName.trim()) return setError("이름을 입력해주세요");
+    try {
+      setSaving(true);
+      setError("");
+      setMessage("");
+      const saved = await updateProfile(user.uid, { username, displayName, bio });
+      setUsername(saved);
+      setMessage("저장되었어요");
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      if (code === "USERNAME_TAKEN") setError("이미 사용 중인 주소예요");
+      else if (code === "INVALID_USERNAME")
+        setError("주소는 영문/숫자/-/_ 만 가능해요");
+      else setError("저장에 실패했어요");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!profile) {
+    return (
+      <p className="text-center text-sm text-muted-foreground">프로필 불러오는 중...</p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+      <p className="text-sm font-semibold">프로필</p>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">표시 이름</label>
+        <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">공개 주소 (username)</label>
+        <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+        <p className="text-xs text-muted-foreground">
+          공개 URL: /{username || "..."}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">소개글</label>
+        <Input value={bio} maxLength={150} onChange={(e) => setBio(e.target.value)} />
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      {message && <p className="text-sm text-green-600">{message}</p>}
+      <Button
+        onClick={save}
+        disabled={saving}
+        className="bg-violet-600 text-white hover:bg-violet-700"
+      >
+        {saving ? "저장 중..." : "프로필 저장"}
+      </Button>
+    </div>
+  );
+}
+
 export default function MyPage() {
   const { user, loading: authLoading } = useAuth();
 
@@ -240,6 +321,8 @@ export default function MyPage() {
           </div>
         ) : (
           <>
+            <ProfileEditor user={user} />
+
             <form
               onSubmit={handleAdd}
               className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5 shadow-sm"
