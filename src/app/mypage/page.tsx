@@ -3,6 +3,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 
 import { displayUrl } from "@/lib/utils";
+import { useAuth, signInWithGoogle, logout } from "@/lib/auth";
 import {
   fetchLinks,
   addLink,
@@ -42,10 +43,12 @@ function normalizeUrl(value: string) {
 }
 
 function LinkRow({
+  uid,
   link,
   onSaved,
   onAskDelete,
 }: {
+  uid: string;
   link: LinkDoc;
   onSaved: () => void;
   onAskDelete: (link: LinkDoc) => void;
@@ -73,7 +76,7 @@ function LinkRow({
     try {
       setSaving(true);
       setError("");
-      await updateLink(link.id, { title: t, url: normalizeUrl(u) });
+      await updateLink(uid, link.id, { title: t, url: normalizeUrl(u) });
       setEditing(false);
       onSaved();
     } catch {
@@ -86,16 +89,8 @@ function LinkRow({
   if (editing) {
     return (
       <div className="flex flex-col gap-2 rounded-2xl border-[1.5px] border-violet-300 bg-card p-4 shadow-sm">
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="제목"
-        />
-        <Input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="주소"
-        />
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="제목" />
+        <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="주소" />
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setEditing(false)} disabled={saving}>
@@ -132,12 +127,7 @@ function LinkRow({
       <Button variant="ghost" size="icon" aria-label="수정" onClick={startEdit}>
         ✏️
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="삭제"
-        onClick={() => onAskDelete(link)}
-      >
+      <Button variant="ghost" size="icon" aria-label="삭제" onClick={() => onAskDelete(link)}>
         🗑️
       </Button>
     </div>
@@ -145,8 +135,10 @@ function LinkRow({
 }
 
 export default function MyPage() {
+  const { user, loading: authLoading } = useAuth();
+
   const [items, setItems] = useState<LinkDoc[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
@@ -154,19 +146,25 @@ export default function MyPage() {
   const [deleteTarget, setDeleteTarget] = useState<LinkDoc | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  async function reload() {
-    setItems(await fetchLinks());
+  async function reload(uid: string) {
+    setItems(await fetchLinks(uid));
   }
 
   useEffect(() => {
-    fetchLinks()
+    if (!user) {
+      setItems([]);
+      return;
+    }
+    setLoading(true);
+    fetchLinks(user.uid)
       .then(setItems)
       .catch(() => setError("링크를 불러오지 못했어요"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
+    if (!user) return;
     const t = title.trim();
     const u = url.trim();
 
@@ -177,8 +175,8 @@ export default function MyPage() {
     try {
       setSaving(true);
       setError("");
-      await addLink({ title: t, url: normalizeUrl(u), icon: "🔗" });
-      await reload();
+      await addLink(user.uid, { title: t, url: normalizeUrl(u), icon: "🔗" });
+      await reload(user.uid);
       setTitle("");
       setUrl("");
     } catch {
@@ -189,11 +187,11 @@ export default function MyPage() {
   }
 
   async function confirmDelete() {
-    if (!deleteTarget) return;
+    if (!deleteTarget || !user) return;
     try {
       setDeleting(true);
-      await deleteLink(deleteTarget.id);
-      await reload();
+      await deleteLink(user.uid, deleteTarget.id);
+      await reload(user.uid);
       setDeleteTarget(null);
     } finally {
       setDeleting(false);
@@ -203,50 +201,90 @@ export default function MyPage() {
   return (
     <div className="flex min-h-screen justify-center bg-background px-4 py-12">
       <main className="flex w-full max-w-md flex-col gap-8">
-        <h1 className="text-2xl font-bold tracking-tight">내 링크 관리</h1>
+        <header className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">내 링크 관리</h1>
+          {!authLoading &&
+            (user ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {user.displayName ?? "사용자"}님
+                </span>
+                <Button variant="outline" size="sm" onClick={() => logout()}>
+                  로그아웃
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => signInWithGoogle().catch(() => {})}
+                className="bg-violet-600 text-white hover:bg-violet-700"
+              >
+                Google로 로그인
+              </Button>
+            ))}
+        </header>
 
-        <form
-          onSubmit={handleAdd}
-          className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5 shadow-sm"
-        >
-          <Input
-            placeholder="제목 (예: 내 인스타그램)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <Input
-            placeholder="주소 (예: instagram.com/myname)"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-violet-600 text-white hover:bg-violet-700"
-          >
-            {saving ? "추가 중..." : "추가하기"}
-          </Button>
-        </form>
-
-        <div className="flex flex-col gap-3">
-          {loading ? (
-            <p className="text-center text-sm text-muted-foreground">불러오는 중...</p>
-          ) : items.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground">
-              아직 링크가 없어요. 위에서 추가해보세요!
+        {authLoading ? (
+          <p className="text-center text-sm text-muted-foreground">확인 중...</p>
+        ) : !user ? (
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/60 bg-card p-8 text-center shadow-sm">
+            <p className="text-sm text-muted-foreground">
+              로그인하면 나만의 링크를 추가하고 관리할 수 있어요.
             </p>
-          ) : (
-            items.map((link) => (
-              <LinkRow
-                key={link.id}
-                link={link}
-                onSaved={reload}
-                onAskDelete={setDeleteTarget}
+            <Button
+              onClick={() => signInWithGoogle().catch(() => {})}
+              className="bg-violet-600 text-white hover:bg-violet-700"
+            >
+              Google로 로그인
+            </Button>
+          </div>
+        ) : (
+          <>
+            <form
+              onSubmit={handleAdd}
+              className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5 shadow-sm"
+            >
+              <Input
+                placeholder="제목 (예: 내 인스타그램)"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
-            ))
-          )}
-        </div>
+              <Input
+                placeholder="주소 (예: instagram.com/myname)"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button
+                type="submit"
+                disabled={saving}
+                className="w-full bg-violet-600 text-white hover:bg-violet-700"
+              >
+                {saving ? "추가 중..." : "추가하기"}
+              </Button>
+            </form>
+
+            <div className="flex flex-col gap-3">
+              {loading ? (
+                <p className="text-center text-sm text-muted-foreground">불러오는 중...</p>
+              ) : items.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  아직 링크가 없어요. 위에서 추가해보세요!
+                </p>
+              ) : (
+                items.map((link) => (
+                  <LinkRow
+                    key={link.id}
+                    uid={user.uid}
+                    link={link}
+                    onSaved={() => reload(user.uid)}
+                    onAskDelete={setDeleteTarget}
+                  />
+                ))
+              )}
+            </div>
+          </>
+        )}
       </main>
 
       <AlertDialog

@@ -1,4 +1,5 @@
-import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, Settings } from "lucide-react";
 
 import { links } from "@/data/links";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,15 @@ export default function Home() {
   return (
     <div className="relative flex min-h-screen justify-center overflow-hidden bg-background px-4 py-16">
       <div className="animate-aurora pointer-events-none absolute -top-32 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-violet-500/10 blur-3xl" />
+
+      <Link
+        href="/mypage"
+        aria-label="내 링크 관리"
+        className="absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-violet-600"
+      >
+        <Settings className="size-3.5" />
+        관리
+      </Link>
 
       <main className="relative flex w-full max-w-md flex-col items-center gap-10">
         <div className="animate-fade-up flex flex-col items-center gap-4">

@@ -19,12 +19,17 @@ export type LinkDoc = {
   icon: string;
 };
 
-// 로그인 기능 전까지는 모든 링크를 anonymous 사용자 아래에 저장
-// 경로: users/anonymous/links/{linkId}  (11주차 이후 anonymous -> 실제 uid)
-const linksCol = collection(db, "users", "anonymous", "links");
+// 사용자별 링크 경로: users/{uid}/links/{linkId}
+function linksCol(uid: string) {
+  return collection(db, "users", uid, "links");
+}
 
-export async function fetchLinks(): Promise<LinkDoc[]> {
-  const q = query(linksCol, orderBy("createdAt", "asc"));
+function linkDoc(uid: string, id: string) {
+  return doc(db, "users", uid, "links", id);
+}
+
+export async function fetchLinks(uid: string): Promise<LinkDoc[]> {
+  const q = query(linksCol(uid), orderBy("createdAt", "asc"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => {
     const data = d.data() as Omit<LinkDoc, "id">;
@@ -32,24 +37,21 @@ export async function fetchLinks(): Promise<LinkDoc[]> {
   });
 }
 
-export async function addLink(data: {
-  title: string;
-  url: string;
-  icon: string;
-}) {
-  await addDoc(linksCol, { ...data, createdAt: serverTimestamp() });
+export async function addLink(
+  uid: string,
+  data: { title: string; url: string; icon: string },
+) {
+  await addDoc(linksCol(uid), { ...data, createdAt: serverTimestamp() });
 }
 
 export async function updateLink(
+  uid: string,
   id: string,
   data: { title: string; url: string },
 ) {
-  await updateDoc(doc(db, "users", "anonymous", "links", id), {
-    ...data,
-    updatedAt: serverTimestamp(),
-  });
+  await updateDoc(linkDoc(uid, id), { ...data, updatedAt: serverTimestamp() });
 }
 
-export async function deleteLink(id: string) {
-  await deleteDoc(doc(db, "users", "anonymous", "links", id));
+export async function deleteLink(uid: string, id: string) {
+  await deleteDoc(linkDoc(uid, id));
 }
